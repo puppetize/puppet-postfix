@@ -1,0 +1,3 @@
+- implement `absent' (package/service/config files/master.cf entries)
+- set group/user/mode from params for files
+  - waiting for $root_group facter

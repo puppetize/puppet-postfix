@@ -1,0 +1,38 @@
+# THIS FILE IS MANAGED BY PUPPET - EDITING IS FUTILE
+
+<% if operatingsystem == 'Debian' -%>
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+smtpd_banner = $myhostname ESMTP $mail_name (Debian/GNU)
+<% else -%>
+smtpd_banner = $myhostname ESMTP $mail_name
+<% end -%>
+biff = no
+
+# appending .domain is the MUA's job.
+append_dot_mydomain = no
+
+<% if message_size_limit != :undef -%>
+message_size_limit = <%= message_size_limit %>
+<% end -%>
+<% if mydestination != :undef -%>
+mydestination = <%= mydestination %>
+<% end -%>
+<% if mydomain != :undef -%>
+mydomain = <%= mydomain %>
+<% end -%>
+<% if myorigin != :undef -%>
+myorigin = <%= myorigin %>
+<% end -%>
+<% if relayhost != :undef -%>
+relayhost = <%= relayhost %>
+<% end -%>
+<% parameters.each_pair do |param,value| -%>
+<%= param %> = <%= value %>
+<% end -%>
+
+# mail acceptance only from local, all others are rejected as we are not final for anything
+mynetworks = 127.0.0.0/8
+mailbox_size_limit = 0
+recipient_delimiter = +
+inet_interfaces = all
