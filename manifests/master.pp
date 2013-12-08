@@ -3,10 +3,18 @@
 # This uses augeas! So ensure that it is installed on
 # your system and has all necessary lenses.
 #
+# In the next versions of postfix the postconf command
+# will also enable us to change the master.cf .. so this
+# doesn't need to use augeas in the future (TODO check
+# what is better or if both should be possible)
+#
 # == Parameters (see master(5) for all of them):
 #
-# - name:         service name
-# - type:         one of `inet', `unix', `fifo', `pass'
+# - name:         service name | type (one of `inet', `unix', `fifo', `pass')
+#                 this is a combination of the name and the type to ensure the
+#                 uniqueness of it and to enable multiple services with the same
+#                 name but different types
+#                 Example: smtp|unix
 # - private:      one of `y', `n', `-'
 # - unprivileged: one of `y', `n', `-'
 # - chroot:       one of `y', `n', `-'
@@ -25,7 +33,6 @@
 # - load_path: directories which should be searched for lenses
 #              (default: undef)
 define postfix::master(
-  $type,
   $private,
   $unprivileged,
   $chroot,
@@ -40,9 +47,10 @@ define postfix::master(
 ) {
   include postfix
 
-  if !($type in ['inet', 'unix', 'fifo', 'pass']) {
-    fail('`type\' can only be one of +inet+, +unix+, +fifo+, +pass+')
-  }
+  validate_re($name, '^[^|]+\|(inet|unix|fifo|pass)$')
+
+  $service_name = regsubst($name, '^([^|]+).*', '\1')
+  $type = regsubst($name, '.*\|(.+)$', '\1')
 
   if !($private in ['y', 'n', '-']) {
     fail('`private\' can only be one of +y+, +n+, +-+')
@@ -73,7 +81,7 @@ define postfix::master(
     default => $service_autorestart,
   }
 
-  $prefix = "set ${name}"
+  $prefix = "set ${service_name}[type=\"${type}\"]"
 
   if $command_args != undef {
     if is_array($command_args) {
@@ -84,7 +92,12 @@ define postfix::master(
       fail('`command_args\' has to be +undef+, a string or an array of strings')
     }
   } else {
-    $command_args_real = ''
+    $command_args_real = undef
+  }
+
+  $command_real = $command_args_real ? {
+    undef   => $command,
+    default => "${command}\n  ${command_args_real}"
   }
 
   augeas { "${module_name}::master.cf::${name}":
@@ -95,7 +108,7 @@ define postfix::master(
       "${prefix}/chroot ${chroot}",
       "${prefix}/wakeup ${wakeup}",
       "${prefix}/limit ${limit}",
-      "${prefix}/command \"${command}\n  ${command_args_real}\"",
+      "${prefix}/command \"${command_real}\"",
     ],
     incl      => "${postfix::config_dir}/master.cf",
     lens      => $lens,
